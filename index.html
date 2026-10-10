@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>전남미채 센서 연수 대시보드</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#eef0fb; --card:#ffffff; --text:#2b2f55; --sub:#5c6289; --mute:#9399bd; --line:#d5d9f2;
+  --pt:#6674e8; --ptbg:#eef0ff; --pt2:#5361d6; --acc:#d9822b; --ok:#2f8f55; --warn:#c0503f;
+  --green:#5fb878; --soft:#f8f9ff; --head:#2b2f55; --r:10px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:15px}
+body{margin:0;background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;
+  font-family:"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+#app{display:flex;flex-direction:column;height:100vh;background:var(--bg)}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1.5px solid var(--line)}
+.top h1{font-size:20px;font-weight:800;margin:0;white-space:nowrap}
+.top .sp{flex:1}
+.cols{flex:1;min-height:0;display:flex;gap:10px;padding:10px;overflow-x:auto}
+.step{background:var(--card);border:1.5px solid var(--line);border-radius:14px;display:flex;flex-direction:column;
+  min-height:0;min-width:0;flex:none;box-shadow:0 2px 8px rgba(80,90,180,.07);overflow:hidden}
+#s1{width:270px} #s2{width:330px} #s4{width:300px}
+.step.grow{flex:1;min-width:440px}
+.step-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1.5px solid var(--line)}
+.step-h h2{font-size:17px;font-weight:800;margin:0;flex:1;white-space:nowrap}
+.num{width:28px;height:28px;border-radius:8px;background:var(--pt);color:#fff;font-weight:800;display:grid;place-items:center;flex:none}
+.fold{width:32px;height:32px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--pt2);cursor:pointer;flex:none;font-size:15px}
+.fold:hover{background:var(--ptbg)}
+.step-b{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.step.closed{width:50px!important;min-width:0!important;flex:none!important}
+.step.closed .step-b{display:none}
+.step.closed .step-h{flex-direction:column;border-bottom:0;height:100%;padding:10px 6px}
+.step.closed h2{writing-mode:vertical-rl;flex:none;letter-spacing:2px}
+.step.closed .fold{margin-top:auto;transform:rotate(180deg)}
+.box{border:1.5px solid var(--line);border-radius:12px;background:var(--soft);padding:10px 12px}
+.box-t{font-weight:800;margin:0 0 6px;font-size:16px}
+.mod-t{font-size:18px;font-weight:800;margin:0 0 10px}
+.btn{font-size:15px;line-height:1.5;padding:5px 12px;border:1.5px solid var(--line);border-radius:var(--r);
+  background:#fff;color:var(--text);cursor:pointer;white-space:nowrap;font-weight:600}
+.btn:hover{background:var(--ptbg)}
+.btn-p{background:var(--pt);border-color:var(--pt);color:#fff}
+.btn-p:hover{background:var(--pt2)}
+.btn-w{color:var(--warn);border-color:var(--warn)}
+.btn-s{padding:2px 8px}
+.btn-big{display:block;width:100%;padding:11px 12px;font-size:17px;font-weight:800;border-radius:12px;text-align:center}
+.btn-g{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 3px 8px rgba(95,184,120,.3)}
+.btn-g:hover{background:#4fa869}
+.btn-y{background:#fffaf0;border-color:#e9c48a;color:#b9772a}
+.btn-y:hover{background:#fdf0d8}
+.badge{font-size:15px;font-weight:700;padding:3px 14px;border:1.5px solid var(--line);border-radius:999px;color:var(--sub);white-space:nowrap;background:var(--soft)}
+.badge.ok{color:var(--ok);border-color:var(--ok);background:#effaf2}
+.badge.off{color:var(--sub)}
+input,select,textarea{font:inherit;font-size:15px;color:var(--text);border:1.5px solid var(--line);border-radius:8px;
+  padding:4px 8px;background:#fff;max-width:100%}
+textarea{width:100%;resize:vertical;line-height:1.6}
+input:focus,select:focus,textarea:focus,.btn:focus-visible,.fold:focus-visible,.tab:focus-visible{outline:2px solid var(--pt);outline-offset:1px}
+label{color:var(--sub);font-weight:600}
+.sub{color:var(--sub)} .mute{color:var(--mute)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pm{display:inline-flex;align-items:center;gap:3px}
+.pm input{width:84px}
+.pm .btn{padding:4px 9px;font-weight:800}
+table{border-collapse:collapse;width:100%;font-size:15px;background:#fff}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:right;white-space:nowrap}
+th{background:var(--ptbg);font-weight:700;position:sticky;top:0}
+td:first-child,th:first-child{text-align:left}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}
+.chrow{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:#fff;margin-bottom:6px}
+.chrow .mute{background:var(--pt);color:#fff;border-radius:999px;padding:0 8px;font-weight:700;font-size:13px;flex:none}
+.chrow select.nm{border:1.5px solid var(--line);padding:3px 6px;background:#fff}
+.chrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-align:left;background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--text)}
+.chrow input[type=checkbox]{width:20px;height:20px;padding:0;accent-color:var(--pt);flex:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.vcard{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;min-height:150px;display:flex;flex-direction:column;background:var(--soft)}
+.vcard .nm{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--sub)}
+.vcard .val{font-size:30px;font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums;background:#fff;border:1.5px solid var(--line);border-radius:10px;text-align:center;margin:6px 0;padding:2px 6px}
+.vcard .val.big{font-size:44px;margin:auto 0;padding:10px 6px}
+.vcard .u{font-size:15px;font-weight:600;color:var(--sub);margin-left:4px}
+.vcard svg{display:block;margin-top:auto}
+.vcard svg text{font-size:14px;fill:#5c6289}
+.g-fill{transform-box:fill-box;transition:transform .4s ease}
+.gx{transform-origin:left center;transform:scaleX(0)}
+.gy{transform-origin:center bottom;transform:scaleY(0)}
+@keyframes bub{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-100px);opacity:0}}
+.bub{animation:bub 3s linear infinite}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tab{font-size:15px;font-weight:700;padding:6px 14px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--sub);cursor:pointer;white-space:nowrap}
+.tab:hover{background:var(--ptbg)}
+.tab.on{background:var(--pt);border-color:var(--pt);color:#fff}
+.tab.wst.on{background:var(--acc);border-color:var(--acc)}
+.pane{display:none;flex:1;min-height:0;flex-direction:column;gap:10px}
+.pane.on{display:flex}
+.cwrap{position:relative;flex:1;min-height:240px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:8px}
+.scroll{flex:1;min-height:0;overflow:auto;border:1.5px solid var(--line);border-radius:12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px;flex:1;min-height:0;overflow:auto}
+.two>div{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.wsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:10px;overflow:auto;flex:1;min-height:0;align-content:start}
+.ws{border:1.5px solid #ecd9bf;border-left:5px solid var(--acc);border-radius:12px;background:#fffaf3;padding:10px 12px;min-width:0;overflow:auto}
+.ws h3{font-size:17px;font-weight:800;margin:0 0 6px;color:#a35f17;display:flex;align-items:center;gap:8px}
+.ws th{background:#f8ecdb}
+.tag{font-size:13px;font-weight:700;background:var(--acc);color:#fff;padding:0 8px;border-radius:999px}
+.wsf{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:8px}
+.q{font-weight:700;margin:8px 0 4px}
+.dev{display:flex;align-items:center;gap:6px;padding:3px 0}
+.dev .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+dialog{position:fixed;inset:0;margin:auto;width:min(520px,94vw);max-height:92vh;overflow:auto;color:var(--text);
+  padding:20px;border:1.5px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(43,47,85,.25)}
+dialog::backdrop{background:rgba(43,47,85,.4)}
+dialog .f{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:10px;margin:10px 0}
+dialog .f>input,dialog .f>select{width:100%}
+dialog .pm{display:flex;min-width:0}
+dialog .pm input{flex:1;min-width:0;width:auto}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--head);color:#fff;padding:10px 18px;
+  border-radius:12px;font-size:15px;line-height:1.6;z-index:50;display:none;max-width:90vw;width:max-content}
+dialog#dlg{padding:24px!important;width:min(560px,94vw)!important;max-width:94vw!important;max-height:92vh!important;
+  overflow:auto!important;box-sizing:border-box!important;border:1.5px solid var(--line)!important;border-radius:16px!important}
+dialog#dlg .mod-t{font-size:18px!important;font-weight:800!important;margin:0 0 12px!important}
+dialog#dlg .f{margin:10px 0!important}
+dialog#dlg .f>input,dialog#dlg .f>select,dialog#dlg .pm input{height:38px;box-sizing:border-box}
+dialog#dlg .dbtn{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:180px;background:#fff;border:1.5px solid var(--line);
+  border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(43,47,85,.18)}
+.menu-list .btn{border-color:transparent;text-align:left;width:100%;padding:8px 12px}
+@media print{.menu-list{display:none!important}}
+@media (max-width:420px){dialog .f{grid-template-columns:1fr;gap:4px}}
+@media (max-width:1000px){
+  #app{height:auto}
+  .cols{flex-direction:column;overflow:visible}
+  .step,.step.closed{width:100%!important;min-width:0!important}
+  .step.closed .step-h{flex-direction:row;height:auto;padding:10px 12px}
+  .step.closed h2{writing-mode:horizontal-tb;flex:1}
+  .step.closed .fold{margin:0;transform:rotate(-90deg)}
+  .fold{transform:rotate(90deg)}
+  .step-b{overflow:visible}
+  .cwrap{min-height:320px}
+  .scroll{max-height:460px}
+  .two{grid-template-columns:1fr}
+}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body,#app{background:#fff!important}
+  #app{height:auto}
+  .cols{display:block;padding:0;overflow:visible}
+  .step,.step.closed{width:100%!important;margin:8px 0;box-shadow:none;break-inside:avoid;overflow:visible}
+  .step.grow{break-inside:auto}
+  .step-b,.wsgrid,.ws{overflow:visible}
+  .cwrap{min-height:320px}
+  .scroll{max-height:420px;overflow:hidden}
+  .fold,#toast,dialog{display:none!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="top">
+  <span aria-hidden="true" style="font-size:24px">🔬</span>
+  <h1>전남미채 센서 연수 대시보드</h1>
+  <span class="sp"></span>
+  <span id="badge" class="badge off">연결 안 됨</span>
+  <span class="sp"></span>
+  <button id="btnDemo" class="btn">데모 데이터</button>
+  <button id="btnConnect" class="btn btn-p">장치 연결</button>
+  <button id="btnStart" class="btn">▶ 시작</button>
+  <div class="menu" id="outMenu">
+    <button id="btnOut" class="btn" aria-haspopup="true" aria-expanded="false" aria-controls="outList">📤 내보내기 ▾</button>
+    <div class="menu-list" id="outList" role="menu" hidden>
+      <button id="btnPrint" class="btn" role="menuitem">🖨 인쇄</button>
+      <button id="btnImg" class="btn" role="menuitem">🖼 이미지 저장</button>
+      <button id="btnPdf" class="btn" role="menuitem">📄 PDF 저장</button>
+    </div>
+  </div>
+  <button id="btnFull" class="btn" title="전체 화면" aria-label="전체 화면">⛶</button>
+</div>
+
+<div class="cols">
+
+  <!-- 1 장치 연결 -->
+  <section class="step" id="s1">
+    <div class="step-h"><span class="num">1</span><h2>장치 연결</h2><button class="fold" aria-label="장치 연결 패널 접기/펴기">◀</button></div>
+    <div class="step-b">
+      <button id="btnAdd" class="btn btn-big btn-g">＋ 장치 연결</button>
+      <div class="box">
+        <div class="box-t">🔌 USB 보드</div>
+        <div id="devList"></div>
+        <div id="rawLine" class="sub" style="word-break:break-all"></div>
+        <button id="btnDiscAll" class="btn btn-w" style="margin-top:6px" hidden>❌ 연결 해제</button>
+      </div>
+      <div class="sub">이지메이커 보드를 USB로 꽂고 [＋ 장치 연결]을 누르세요. Chrome/Edge 전용 · 115200bps</div>
+      <div class="sub">장치가 없으면 위쪽 [데모 데이터]로 화면을 확인할 수 있어요.</div>
+    </div>
+  </section>
+
+  <!-- 2 수집 설정 -->
+  <section class="step" id="s2">
+    <div class="step-h"><span class="num">2</span><h2>수집 설정</h2><button class="fold" aria-label="수집 설정 패널 접기/펴기">◀</button></div>
+    <div class="step-b">
+      <button id="pStart" class="btn btn-big btn-g">▶ 수신 시작</button>
+      <button id="pPause" class="btn btn-big btn-y">⏸ 수신 일시 정지</button>
+      <div class="box">
+        <div class="box-t">⏱ 측정 주기</div>
+        <div class="row">
+          <input id="interval" type="number" step="0.01" min="0.01" value="0.5" style="width:90px" aria-label="측정 주기(초)"> <span class="sub">초마다 기록</span>
+        </div>
+        <div class="row sub" style="margin-top:6px">기록 <b id="rowCount">0</b>개 · <b id="elapsedTxt">0.00</b>초
+          <button id="pReset" class="btn btn-w btn-s" style="margin-left:auto">↺ 초기화</button></div>
+      </div>
+      <div class="box">
+        <div class="box-t">🧪 센서-환경변수 설정</div>
+        <div class="sub" style="margin-bottom:8px">사용할 센서만 체크하고 [▶ 수신 시작]을 누르면 체크한 센서만 남습니다. 목록은 이름순이고, 보드가 보내는 값은 남은 센서의 번호(센서1, 2…) 순서대로 들어가요. ✎로 이름·단위·게이지·색상을 바꿀 수 있어요.</div>
+        <div class="row" style="margin-bottom:8px">
+          <button id="chAllOff" class="btn btn-s">모두 해제</button>
+          <button id="chReset" class="btn btn-s">전체 센서 목록 다시 보기</button>
+        </div>
+        <div id="chList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 데이터 대시보드 -->
+  <section class="step grow" id="s3">
+    <div class="step-h"><span class="num">3</span><h2>데이터 대시보드</h2><button class="fold" aria-label="데이터 대시보드 패널 접기/펴기">◀</button></div>
+    <div class="step-b">
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="pLive">📈 실시간</button>
+        <button class="tab" data-tab="pTable">📋 관찰 기록표</button>
+        <button class="tab" data-tab="pStat">📐 데이터 분석</button>
+        <button class="tab wst" data-tab="pWs">📝 학습지</button>
+        <span style="flex:1"></span>
+        <button id="btnCsv" class="btn">⬇ CSV 저장</button>
+        <button id="btnPng" class="btn">⬇ 그래프 PNG</button>
+      </div>
+
+      <div class="pane on" id="pLive">
+        <div class="row">
+          <label for="yMin">Y축 최소</label>
+          <span class="pm"><input id="yMin" type="text" inputmode="decimal" placeholder="자동" style="width:72px"><button class="btn" data-pm="yMin" aria-label="Y축 최소 부호 바꾸기">±</button></span>
+          <label for="yMax">최대</label>
+          <span class="pm"><input id="yMax" type="text" inputmode="decimal" placeholder="자동" style="width:72px"><button class="btn" data-pm="yMax" aria-label="Y축 최대 부호 바꾸기">±</button></span>
+          <label for="xCount">X축 표시 개수</label>
+          <input id="xCount" type="number" min="5" step="5" value="50" style="width:76px">
+        </div>
+        <div class="cwrap"><canvas id="lineChart"></canvas></div>
+      </div>
+
+      <div class="pane" id="pTable">
+        <div class="sub">최신 값이 맨 위에 쌓입니다.</div>
+        <div class="scroll" id="tableWrap"><table id="dataTable"><thead></thead><tbody></tbody></table></div>
+      </div>
+
+      <div class="pane" id="pStat">
+        <div class="two">
+          <div><div class="box-t">통계 요약</div><div class="scroll"><table id="statTable"></table></div></div>
+          <div>
+            <div class="row"><span class="box-t" style="margin:0">산점도</span>
+              <label for="scX">X축</label><select id="scX"></select>
+              <label for="scY">Y축</label><select id="scY"></select></div>
+            <div class="cwrap"><canvas id="scChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" id="pWs">
+        <div class="wsgrid">
+          <div class="ws">
+            <h3><span class="tag">1</span> 실험 준비와 예상</h3>
+            <div class="wsf">
+              <label>소속 <input data-k="school" type="text" style="width:140px"></label>
+              <label>이름 <input data-k="name" type="text" style="width:100px"></label>
+              <label>날짜 <input data-k="date" type="date"></label>
+            </div>
+            <div class="q">① 오늘 살펴볼 센서와 측정 대상을 적어 보세요.</div>
+            <textarea data-k="q1" rows="2" placeholder="예: 자기장 센서 — 자석과의 거리에 따른 자기장 세기"></textarea>
+            <div class="q">② 측정값이 어떻게 변할지 예상하고, 그렇게 생각한 까닭을 적어 보세요.</div>
+            <textarea data-k="q2" rows="3"></textarea>
+          </div>
+          <div class="ws">
+            <h3><span class="tag">2</span> 측정 기록표</h3>
+            <div class="wsf">
+              <label for="wsCh">기록할 센서</label><select id="wsCh" data-k="wsCh"></select>
+              <button id="wsGrab" class="btn">현재값 넣기</button>
+            </div>
+            <table id="wsTable">
+              <thead><tr><th>조건</th><th>1회</th><th>2회</th><th>3회</th><th>평균</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="ws">
+            <h3><span class="tag">3</span> 그래프 해석</h3>
+            <div class="q">① 그래프에서 값이 가장 크게 변한 구간은 언제였나요? 그때 무슨 일이 있었나요?</div>
+            <textarea data-k="q3" rows="3"></textarea>
+            <div class="q">② 두 센서값 사이에 관계가 보이나요? (데이터 분석의 산점도 참고)</div>
+            <textarea data-k="q4" rows="3"></textarea>
+          </div>
+          <div class="ws">
+            <h3><span class="tag">4</span> 결과 정리</h3>
+            <div class="q">① 예상과 실제 측정 결과를 비교해 보세요.</div>
+            <textarea data-k="q5" rows="3"></textarea>
+            <div class="q">② 이 실험으로 알게 된 점을 한두 문장으로 정리해 보세요.</div>
+            <textarea data-k="q6" rows="3"></textarea>
+          </div>
+          <div class="ws">
+            <h3><span class="tag">5</span> 수업 적용 아이디어</h3>
+            <div class="q">이 센서를 어떤 단원·실험에 활용할 수 있을까요? 더 알아보고 싶은 점도 적어 보세요.</div>
+            <textarea data-k="q7" rows="4"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 계측기 -->
+  <section class="step" id="s4">
+    <div class="step-h"><span class="num">4</span><h2>계측기</h2><button class="fold" aria-label="계측기 패널 접기/펴기">◀</button></div>
+    <div class="step-b"><div id="cards" class="cards"></div></div>
+  </section>
+
+</div>
+</div>
+
+<!-- 환경변수 지정 대화상자 -->
+<dialog id="dlg">
+  <h2 class="mod-t" id="dlgT">환경변수 지정</h2>
+  <div class="f"><label for="eName">표시 이름</label><input id="eName" type="text"></div>
+  <div class="f"><label for="eUnit">단위</label><input id="eUnit" type="text"></div>
+  <div class="f"><label for="eGauge">게이지 모양</label>
+    <select id="eGauge">
+      <option value="number">큰 숫자</option><option value="bar">가로 막대</option>
+      <option value="thermo">온도계형</option><option value="fill">농도 채움</option>
+    </select></div>
+  <div class="f"><label for="eColor">색상</label><input id="eColor" type="color" style="height:36px;padding:2px"></div>
+  <div class="f"><label for="eMin">게이지 최소</label><span class="pm"><input id="eMin" type="text" inputmode="decimal"><button class="btn" data-pm="eMin" aria-label="최소 부호 바꾸기">±</button></span></div>
+  <div class="f"><label for="eMax">게이지 최대</label><span class="pm"><input id="eMax" type="text" inputmode="decimal"><button class="btn" data-pm="eMax" aria-label="최대 부호 바꾸기">±</button></span></div>
+  <div class="dbtn">
+    <button id="eDef" class="btn">기본값</button>
+    <button id="eCancel" class="btn">취소</button>
+    <button id="eSave" class="btn btn-p">저장</button>
+  </div>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script>
+// ===================== 공통 도구 =====================
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const fmt = v => (v === undefined || v === null || Number.isNaN(v)) ? '–' : (Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2));
+const tk = v => Math.abs(v) >= 1000 ? v.toFixed(0) : String(+v.toFixed(1));
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 2600); }
+function download(name, href) { const a = document.createElement('a'); a.download = name; a.href = href; document.body.appendChild(a); a.click(); a.remove(); }
+function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; }
+
+// ===================== 채널(환경변수) 설정 =====================
+const PALETTE = ['#111827','#6b7280','#2c6cb5','#9ca3af','#0f766e','#a8570f','#a63b5a','#5f7a2b'];
+const DEFAULTS = [
+  {name:'무게',unit:'g',gauge:'bar',color:'#111827',min:0,max:1000},
+  {name:'자기장 X',unit:'Gauss',gauge:'number',color:'#6b7280',min:-8,max:8},
+  {name:'자기장 Y',unit:'Gauss',gauge:'number',color:'#2c6cb5',min:-8,max:8},
+  {name:'자기장 Z',unit:'Gauss',gauge:'number',color:'#9ca3af',min:-8,max:8},
+  {name:'고온',unit:'°C',gauge:'thermo',color:'#0f766e',min:0,max:200},
+  {name:'미세먼지',unit:'μg/m³',gauge:'fill',color:'#a8570f',min:0,max:200},
+  {name:'전압',unit:'V',gauge:'bar',color:'#a63b5a',min:0,max:30},
+  {name:'전류',unit:'mA',gauge:'bar',color:'#5f7a2b',min:0,max:1000},
+  {name:'CO₂',unit:'ppm',gauge:'fill',color:'#111827',min:0,max:2000},
+  {name:'가스',unit:'',gauge:'number',color:'#6b7280',min:0,max:1000},
+  {name:'기압',unit:'',gauge:'number',color:'#2c6cb5',min:0,max:1100},
+  {name:'dc모터',unit:'',gauge:'number',color:'#9ca3af',min:0,max:255},
+  {name:'자이로',unit:'',gauge:'number',color:'#0f766e',min:-180,max:180},
+];
+function defCh(i) {
+  const d = DEFAULTS[i] || {name:'센서' + (i + 1),unit:'',gauge:'number',color:PALETTE[i % PALETTE.length],min:0,max:100};
+  return Object.assign({on:true}, d);
+}
+let chCfg = lsGet('jnmc_channels', []);
+let locked = false;                     // 수신 시작 때 선택한 센서로 고정됐는지
+let chCount = lsGet('jnmc_count', DEFAULTS.length);          // 수신된 열 개수 (수신 전에는 기본 13개)
+function ch(i) { if (!chCfg[i]) chCfg[i] = defCh(i); return chCfg[i]; }
+function saveCh() { lsSet('jnmc_channels', chCfg); lsSet('jnmc_count', chCount); }
+function enabled() { const a = []; for (let i = 0; i < chCount; i++) if (ch(i).on) a.push(i); return a; }
+function label(i) { const c = (typeof i === 'object') ? i : ch(i); return c.unit ? `${c.name} (${c.unit})` : c.name; }
+
+// ===================== 측정 데이터 상태 =====================
+let rows = [];            // {t, v:[...]}
+let stats = [];           // {n,sum,min,max}
+let pending = [];         // 표에 아직 안 그린 행
+let dirty = false;
+let measuring = false, demoOn = false;
+let elapsed = 0, lastTick = performance.now();
+const latestBy = {};      // 장치별 최신 값
+const extras = [];        // 추가 장치
+let devSeq = 1;
+
+function combined() {
+  let out = [];
+  if (demoOn && latestBy.demo) return latestBy.demo;
+  if (latestBy.main) out = out.concat(latestBy.main);
+  extras.forEach(d => { if (latestBy[d.id]) out = out.concat(latestBy[d.id]); });
+  return out;
+}
+function ingest(id, values) { latestBy[id] = values; }
+function record(c) {
+  const r = {t: elapsed / 1000, v: c.slice()};
+  rows.push(r); if (rows.length > 20000) rows.shift();
+  c.forEach((v, i) => {
+    const s = stats[i] || (stats[i] = {n:0,sum:0,min:Infinity,max:-Infinity});
+    s.n++; s.sum += v; if (v < s.min) s.min = v; if (v > s.max) s.max = v;
+  });
+  pending.push(r); dirty = true;
+}
+// 측정 주기 타이머
+let tickTimer;
+function setTick() {
+  clearInterval(tickTimer);
+  let sec = parseFloat($('interval').value); if (!(sec >= 0.01)) sec = 0.01;
+  tickTimer = setInterval(() => {
+    const now = performance.now(), dt = now - lastTick; lastTick = now;
+    if (!measuring) return;
+    elapsed += dt;
+    const c = combined(); if (c.length) record(c);
+  }, Math.max(10, sec * 1000));
+}
+$('interval').addEventListener('change', () => { setTick(); lsSet('jnmc_interval', $('interval').value); });
+
+// ===================== 화면 그리기 =====================
+// --- 표시 데이터 선택 목록
+function presetOpts(c) {
+  const k = DEFAULTS.findIndex(d => d.name === c.name);
+  return (k < 0 ? `<option value="" selected>${esc(label({name:c.name,unit:c.unit}))}</option>` : '') +
+    DEFAULTS.map((d, j) => `<option value="${j}" ${j === k ? 'selected' : ''}>${esc(d.unit ? d.name + ' (' + d.unit + ')' : d.name)}</option>`).join('');
+}
+function renderChList() {
+  let h = '';
+  const order = Array.from({length: chCount}, (_, i) => i).sort((a, b) => ch(a).name.localeCompare(ch(b).name, 'ko'));  // 이름 오름차순
+  for (const i of order) {
+    const c = ch(i);
+    h += `<div class="chrow"><span class="dot" style="background:${esc(c.color)}"></span>
+      <span class="mute">센서${i + 1}</span>
+      <span class="nm" style="cursor:default" title="${esc(label(i))}">${esc(label(i))}</span>
+      <input type="checkbox" data-tog="${i}" ${c.on ? 'checked' : ''} aria-label="${esc(c.name)} 표시">
+      <button class="btn btn-s" data-edit="${i}" aria-label="${esc(c.name)} 환경변수 지정">✎</button></div>`;
+  }
+  $('chList').innerHTML = h;
+}
+$('chList').addEventListener('click', e => { const b = e.target.closest('[data-edit]'); if (b) openEdit(+b.dataset.edit); });
+$('chList').addEventListener('change', e => {
+  if (e.target.dataset.preset !== undefined && e.target.value !== '') {
+    Object.assign(ch(+e.target.dataset.preset), DEFAULTS[+e.target.value], {on: true}); saveCh(); rebuildAll(); return;
+  }
+  if (e.target.dataset.tog !== undefined) { ch(+e.target.dataset.tog).on = e.target.checked; saveCh(); rebuildAll(true); }
+});
+
+// --- 값 카드 게이지(SVG)
+function gaugeSVG(c, i) {
+  const col = esc(c.color), mn = c.min, mx = c.max;
+  if (c.gauge === 'bar') {
+    let t = '';
+    for (let k = 0; k <= 4; k++) { const x = 2 + 196 * k / 4; t += `<line x1="${x}" y1="20" x2="${x}" y2="27" stroke="#9ca3af"/>`; }
+    t += `<text x="2" y="43">${tk(mn)}</text><text x="100" y="43" text-anchor="middle">${tk((mn + mx) / 2)}</text><text x="198" y="43" text-anchor="end">${tk(mx)}</text>`;
+    return `<svg viewBox="0 0 200 46" width="100%" role="img" aria-label="가로 막대 게이지"><rect x="2" y="4" width="196" height="16" fill="#f3f4f6" stroke="#cbd0d7"/><rect class="g-fill gx" x="2" y="4" width="196" height="16" fill="${col}"/>${t}</svg>`;
+  }
+  if (c.gauge === 'thermo') {
+    let t = '';
+    for (let k = 0; k <= 4; k++) { const y = 96 - 86 * k / 4; t += `<line x1="110" y1="${y}" x2="${k % 2 ? 115 : 119}" y2="${y}" stroke="#9ca3af"/>`; if (k % 2 === 0) t += `<text x="123" y="${y + 5}">${tk(mn + (mx - mn) * k / 4)}</text>`; }
+    return `<svg viewBox="0 0 200 120" width="100%" height="110" role="img" aria-label="온도계 게이지"><rect x="88" y="6" width="18" height="94" rx="9" fill="#fff" stroke="${col}"/><rect class="g-fill gy" x="93" y="10" width="8" height="86" fill="#b91c1c"/><circle cx="97" cy="104" r="12" fill="#b91c1c" stroke="${col}"/>${t}</svg>`;
+  }
+  if (c.gauge === 'fill') {
+    let t = '';
+    for (let k = 0; k <= 4; k++) { const y = 112 - 104 * k / 4; t += `<line x1="140" y1="${y}" x2="${k % 2 ? 145 : 149}" y2="${y}" stroke="#9ca3af"/>`; }
+    t += `<text x="153" y="112">${tk(mn)}</text><text x="153" y="65">${tk((mn + mx) / 2)}</text><text x="153" y="20">${tk(mx)}</text>`;
+    return `<svg viewBox="0 0 200 120" width="100%" height="110" role="img" aria-label="농도 채움 게이지"><defs><clipPath id="cl${i}"><rect x="62" y="8" width="76" height="104"/></clipPath></defs>
+      <g clip-path="url(#cl${i})"><rect class="g-fill gy" x="62" y="8" width="76" height="104" fill="${col}" opacity=".85"/>
+      <circle class="bub" cx="80" cy="108" r="4" fill="none" stroke="#fff" stroke-width="1.5"/>
+      <circle class="bub" cx="101" cy="108" r="3" fill="none" stroke="#fff" stroke-width="1.5" style="animation-delay:1s"/>
+      <circle class="bub" cx="122" cy="108" r="5" fill="none" stroke="#fff" stroke-width="1.5" style="animation-delay:2s"/></g>
+      <rect x="62" y="8" width="76" height="104" fill="none" stroke="${col}"/>${t}</svg>`;
+  }
+  return '';
+}
+let cardRefs = [];
+function buildCards() {
+  const en = enabled(); cardRefs = [];
+  $('cards').innerHTML = en.map(i => {
+    const c = ch(i);
+    return `<div class="vcard" data-c="${i}"><div class="nm"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</div>
+      <div class="val ${c.gauge === 'number' ? 'big' : ''}" style="color:${c.gauge === 'number' ? esc(c.color) : 'inherit'}"><span class="v">–</span><span class="u">${esc(c.unit)}</span></div>${gaugeSVG(c, i)}</div>`;
+  }).join('') || '<div class="sub">표시할 채널을 켜 주세요.</div>';
+  $('cards').querySelectorAll('.vcard').forEach(el => cardRefs.push({i: +el.dataset.c, v: el.querySelector('.v'), f: el.querySelector('.g-fill')}));
+  updateCards();
+}
+function updateCards() {
+  const c = combined(); if (!c.length) return;
+  cardRefs.forEach(r => {
+    const v = c[r.i]; if (v === undefined) return;
+    r.v.textContent = fmt(v);
+    if (r.f) {
+      const cf = ch(r.i); let f = (v - cf.min) / ((cf.max - cf.min) || 1); f = Math.max(0, Math.min(1, f));
+      r.f.style.transform = r.f.classList.contains('gx') ? `scaleX(${f})` : `scaleY(${f})`;
+    }
+  });
+}
+
+// --- 그래프
+Chart.defaults.font.size = 15; Chart.defaults.color = '#5c6289'; Chart.defaults.animation = false;
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+const whiteBg = {id:'whiteBg', beforeDraw(c) { const x = c.ctx; x.save(); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.restore(); }};
+const DASH = [[], [7,4], [2,3], [10,3,2,3]];
+const lineChart = new Chart($('lineChart'), {
+  type: 'line', data: {labels: [], datasets: []}, plugins: [whiteBg],
+  options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+    scales: {x: {title: {display: true, text: '시간 (초)'}, grid: {color: '#e6e9f7'}, ticks: {maxTicksLimit: 10}}, y: {grid: {color: '#e6e9f7'}}},
+    plugins: {legend: {position: 'bottom', labels: {boxWidth: 28}}}}
+});
+const scChart = new Chart($('scChart'), {
+  type: 'scatter', data: {datasets: [{data: [], backgroundColor: '#6674e8', pointRadius: 3}]}, plugins: [whiteBg],
+  options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}},
+    scales: {x: {title: {display: true, text: ''}, grid: {color: '#e6e9f7'}}, y: {title: {display: true, text: ''}, grid: {color: '#e6e9f7'}}}}
+});
+function buildChart() {
+  lineChart.data.datasets = enabled().map((i, k) => ({label: label(i), _i: i, data: [], borderColor: ch(i).color, backgroundColor: ch(i).color,
+    borderWidth: 2, borderDash: DASH[k % DASH.length], pointRadius: 0, tension: 0.2}));
+  updateChart();
+}
+function updateChart() {
+  let n = parseInt($('xCount').value); if (!(n >= 2)) n = 50;
+  const s = rows.slice(-n);
+  lineChart.data.labels = s.map(r => r.t.toFixed(2));
+  lineChart.data.datasets.forEach(d => d.data = s.map(r => r.v[d._i]));
+  lineChart.update('none');
+}
+function applyY() {
+  const a = parseFloat($('yMin').value), b = parseFloat($('yMax').value);
+  lineChart.options.scales.y.min = Number.isNaN(a) ? undefined : a;
+  lineChart.options.scales.y.max = Number.isNaN(b) ? undefined : b;
+  lineChart.update('none');
+}
+$('yMin').addEventListener('input', applyY); $('yMax').addEventListener('input', applyY);
+$('xCount').addEventListener('input', updateChart);
+
+// --- 산점도
+function buildScatterSel() {
+  const en = enabled(), px = $('scX').value, py = $('scY').value;
+  const opts = en.map(i => `<option value="${i}">${esc(label(i))}</option>`).join('');
+  $('scX').innerHTML = opts; $('scY').innerHTML = opts;
+  if (en.includes(+px) && px !== '') $('scX').value = px; else if (en.length) $('scX').value = en[0];
+  if (en.includes(+py) && py !== '') $('scY').value = py; else if (en.length) $('scY').value = en[Math.min(1, en.length - 1)];
+  // 학습지 '기록할 센서' 선택도 함께 갱신
+  const pw = $('wsCh').value || (ws.wsCh ?? '');
+  $('wsCh').innerHTML = opts; if (en.includes(+pw) && pw !== '') $('wsCh').value = pw;
+  updateScatter();
+}
+function updateScatter() {
+  const x = +$('scX').value, y = +$('scY').value;
+  if ($('scX').value === '' || $('scY').value === '') { scChart.data.datasets[0].data = []; scChart.update('none'); return; }
+  scChart.data.datasets[0].data = rows.slice(-500).filter(r => r.v[x] !== undefined && r.v[y] !== undefined).map(r => ({x: r.v[x], y: r.v[y]}));
+  scChart.data.datasets[0].backgroundColor = ch(y).color;
+  scChart.options.scales.x.title.text = label(x); scChart.options.scales.y.title.text = label(y);
+  scChart.update('none');
+}
+$('scX').addEventListener('change', updateScatter); $('scY').addEventListener('change', updateScatter);
+
+// --- 통계
+function updateStats() {
+  let h = '<thead><tr><th>채널</th><th>현재</th><th>최소</th><th>최대</th><th>평균</th></tr></thead><tbody>';
+  const c = combined();
+  enabled().forEach(i => {
+    const s = stats[i];
+    h += `<tr><td><span class="dot" style="background:${esc(ch(i).color)};margin-right:6px"></span>${esc(label(i))}</td><td>${fmt(c[i])}</td>` +
+      (s && s.n ? `<td>${fmt(s.min)}</td><td>${fmt(s.max)}</td><td>${fmt(s.sum / s.n)}</td>` : '<td>–</td><td>–</td><td>–</td>') + '</tr>';
+  });
+  $('statTable').innerHTML = h + '</tbody>';
+  $('rowCount').textContent = rows.length; $('elapsedTxt').textContent = (elapsed / 1000).toFixed(2);
+}
+
+// --- 데이터 표 (최신 행이 위, 스크롤 위치 유지)
+const MAXTR = 300;
+function rowHTML(r, en) { return `<tr><td>${r.t.toFixed(2)}</td>${en.map(i => `<td>${fmt(r.v[i])}</td>`).join('')}</tr>`; }
+function buildTable() {
+  const en = enabled();
+  $('dataTable').tHead.innerHTML = `<tr><th>시간 (초)</th>${en.map(i => `<th>${esc(label(i))}</th>`).join('')}</tr>`;
+  $('dataTable').tBodies[0].innerHTML = rows.slice(-MAXTR).reverse().map(r => rowHTML(r, en)).join('');
+  pending = [];
+}
+function flushTable() {
+  if (!pending.length) return;
+  const en = enabled(), wrap = $('tableWrap'), tb = $('dataTable').tBodies[0], prevH = wrap.scrollHeight, prevTop = wrap.scrollTop;
+  tb.insertAdjacentHTML('afterbegin', pending.slice(-MAXTR).reverse().map(r => rowHTML(r, en)).join(''));
+  pending = [];
+  while (tb.rows.length > MAXTR) tb.deleteRow(-1);
+  if (prevTop > 0) wrap.scrollTop = prevTop + (wrap.scrollHeight - prevH);
+}
+
+function rebuildAll(skipList) {
+  if (!skipList) renderChList();
+  buildCards(); buildChart(); buildTable(); buildScatterSel(); updateStats();
+}
+// 화면 갱신 루프
+setInterval(() => {
+  const c = combined();
+  if (!locked && c.length && c.length !== chCount) {
+    chCount = c.length;
+    if (!enabled().length) { for (let i = 0; i < chCount; i++) ch(i).on = true; saveCh(); }
+    rebuildAll();
+  }
+  if (rawInfo.n) $('rawLine').textContent = `받은 원본(${rawInfo.n}줄): ${rawInfo.last || '(빈 줄)'}` + (rawInfo.bad ? ` · 숫자가 아니라 무시한 줄 ${rawInfo.bad}개` : '');
+  updateCards();
+  if (dirty) { dirty = false; flushTable(); updateChart(); updateStats(); updateScatter(); }
+}, 150);
+
+$('chAllOff').addEventListener('click', () => { for (let i = 0; i < chCount; i++) ch(i).on = false; saveCh(); rebuildAll(); });
+$('chReset').addEventListener('click', () => {
+  if (rows.length && !confirm('센서 목록을 처음으로 되돌리면 측정 기록도 지워집니다. 계속할까요?')) return;
+  if (isConnected && isStreaming) $('btnStart').click();      // 수신 중이면 먼저 멈춤
+  else if (demoOn) { measuring = false; refreshStatus(); }
+  if (!demoOn) Object.keys(latestBy).forEach(k => delete latestBy[k]);   // 남아 있던 값 때문에 목록이 다시 줄지 않게
+  rows = []; stats = []; pending = []; elapsed = 0; locked = false;
+  chCfg = DEFAULTS.map((d, i) => Object.assign(defCh(i), {on: false})); chCount = DEFAULTS.length;
+  saveCh(); rebuildAll(); toast('수신을 멈추고 전체 목록으로 되돌렸습니다. 사용할 센서를 체크한 뒤 수신 시작을 눌러 주세요.');
+});
+
+// ===================== 환경변수 지정 대화상자 =====================
+let editIdx = -1;
+function fillEdit(c) { $('eName').value = c.name; $('eUnit').value = c.unit; $('eGauge').value = c.gauge; $('eColor').value = c.color; $('eMin').value = c.min; $('eMax').value = c.max; }
+function openEdit(i) { editIdx = i; $('dlgT').textContent = `센서${i + 1} 환경변수 지정`; fillEdit(ch(i)); $('dlg').showModal(); }
+$('eDef').addEventListener('click', () => fillEdit(defCh(editIdx)));
+$('eCancel').addEventListener('click', () => $('dlg').close());
+$('eSave').addEventListener('click', () => {
+  const c = ch(editIdx), mn = parseFloat($('eMin').value), mx = parseFloat($('eMax').value);
+  c.name = $('eName').value.trim() || '센서' + (editIdx + 1);
+  c.unit = $('eUnit').value.trim(); c.gauge = $('eGauge').value; c.color = $('eColor').value;
+  if (!Number.isNaN(mn)) c.min = mn; if (!Number.isNaN(mx)) c.max = mx;
+  if (c.max <= c.min) c.max = c.min + 1;
+  saveCh(); $('dlg').close(); rebuildAll();
+});
+
+// ===================== ± 부호 토글 (태블릿 음수 입력) =====================
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-pm]'); if (!b) return;
+  const inp = b.dataset.pm ? $(b.dataset.pm) : b.previousElementSibling; if (!inp) return;
+  let v = inp.value.trim();
+  if (v === '') v = '-'; else if (v[0] === '-' || v[0] === '−') v = v.slice(1); else v = '-' + v;
+  inp.value = v; inp.dispatchEvent(new Event('input', {bubbles: true})); inp.focus();
+});
+
+// ===================== 상태 표시 =====================
+function refreshStatus() {
+  const b = $('badge');
+  if (isConnected) { b.textContent = isStreaming ? '● 측정 중' : '연결됨'; b.className = 'badge ok'; }
+  else if (demoOn) { b.textContent = measuring ? '데모 측정 중' : '데모 일시정지'; b.className = 'badge'; }
+  else { b.textContent = '연결 안 됨'; b.className = 'badge off'; }
+  $('btnStart').textContent = measuring ? '⏸ 일시정지' : '▶ 시작';
+  $('btnConnect').textContent = isConnected ? '연결 해제' : '장치 연결';
+  $('btnDemo').textContent = demoOn ? '데모 끄기' : '데모 데이터';
+  $('btnAdd').textContent = isConnected ? '＋ 장치 추가' : '＋ 장치 연결';
+  $('btnDiscAll').hidden = !isConnected;
+  renderDevices();
+}
+function portName(p, n) { let s = '장치 ' + n; try { const i = p.getInfo(); if (i.usbVendorId !== undefined) s += ` (USB ${i.usbVendorId.toString(16)}:${(i.usbProductId || 0).toString(16)})`; } catch (e) {} return s; }
+function renderDevices() {
+  let h = '';
+  if (isConnected && port) h += `<div class="dev"><span class="n">${esc(portName(port, 1))} · 기본</span><span style="color:var(--ok)">${isStreaming ? '수신 중' : '연결됨'}</span><button class="btn btn-s" data-x="main" aria-label="장치 1 해제">✕</button></div>`;
+  extras.forEach((d, k) => h += `<div class="dev"><span class="n">${esc(portName(d.port, k + 2))}</span><span style="color:var(--ok)">${isStreaming ? '수신 중' : '연결됨'}</span><button class="btn btn-s" data-x="${d.id}" aria-label="장치 ${k + 2} 해제">✕</button></div>`);
+  if (!h) h = demoOn ? '<div class="dev">가상 장치 (데모 모드)</div>' : '<div class="dev mute">연결된 장치가 없습니다.</div>';
+  $('devList').innerHTML = h;
+}
+$('devList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-x]'); if (!b) return;
+  if (b.dataset.x === 'main') await disconnectSerial();      // 기본 장치를 해제하면 전체 해제
+  else { const d = extras.find(x => x.id === b.dataset.x); if (d) await closeExtra(d); }
+});
+
+// 연결 실패 이유를 화면에 안내
+function showConnError(e) {
+  const n = e && e.name, m = (e && e.message) || '';
+  if (n === 'NotFoundError') return toast('장치를 선택하지 않았습니다. 목록에 장치가 안 보이면 USB 케이블(데이터용)과 드라이버를 확인하세요.');
+  if (n === 'SecurityError' || /permissions policy|not allowed/i.test(m)) return alert('이 화면에서는 USB 장치 접근이 차단되어 있습니다.\n\n파일을 내려받아 Chrome 또는 Edge에서 직접 열어 주세요. (미리보기 창·메신저 내 브라우저에서는 연결되지 않습니다)');
+  if (n === 'InvalidStateError') return alert('이미 열려 있는 장치입니다. 페이지를 새로고침한 뒤 다시 연결해 주세요.');
+  if (n === 'NetworkError' || /failed to open/i.test(m)) return alert('포트를 열 수 없습니다.\n\n다른 프로그램(엔트리·아두이노 IDE·다른 브라우저 탭 등)이 이 장치를 사용 중인지 확인하고, 모두 닫은 뒤 USB를 뺐다 꽂아 다시 시도해 주세요.');
+  alert('장치 연결에 실패했습니다.\n' + n + ': ' + m);
+}
+
+const rawInfo = {n: 0, bad: 0, last: ''};   // 보드에서 받은 원본 줄 (진단용)
+
+// 수신 시작 시: 체크한 센서만 남기고, 들어오는 값을 그 순서대로 대응
+function applySelection() {
+  const keep = []; for (let i = 0; i < chCount; i++) if (ch(i).on) keep.push(i);
+  if (!keep.length) { locked = false; return; }          // 아무것도 안 골랐으면 들어오는 개수에 맞춤
+  if (keep.length !== chCount) {
+    rows.forEach(r => r.v = keep.map(i => r.v[i]));        // 이전 기록도 남는 열에 맞춰 정리
+    stats = keep.map(i => stats[i]); pending = [];
+    chCfg = keep.map(i => chCfg[i]); chCount = keep.length;
+  }
+  locked = true; saveCh(); rebuildAll();
+}
+
+// 부록 코드가 호출하는 UI 함수
+function updateMainState(state) {
+  if (state === 'disconnected') {
+    isStreaming = false; measuring = false; delete latestBy.main;
+    extras.slice().forEach(d => closeExtra(d));
+  } else {
+    if (demoOn) stopDemo();
+    measuring = (state === 'streaming');
+    if (state === 'streaming') applySelection();
+  }
+  lastTick = performance.now();
+  refreshStatus();
+}
+
+// ===== Web Serial 연결 코드 (이지메이커 보드 검증본 — 구조를 바꾸지 말 것) =====
+let port, reader, inputDone, inputStream;
+let isConnected = false, isStreaming = false;
+
+// [장치 연결/해제] 버튼
+document.getElementById('btnConnect').addEventListener('click', async () => {
+    if (!navigator.serial) return alert("Web Serial 미지원 브라우저입니다 (Chrome 권장).");
+    if (!isConnected) {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 }); // 통신 속도: 반드시 115200
+            isConnected = true;
+            updateMainState('connected');
+        } catch (e) { console.error("연결 에러:", e); showConnError(e); }
+    } else { await disconnectSerial(); }
+});
+
+// [데이터 수신 시작/중지] 버튼
+document.getElementById('btnStart').addEventListener('click', () => {
+    if (!isConnected) return;
+    if (!isStreaming) { isStreaming = true; startReading(); updateMainState('streaming'); }
+    else { isStreaming = false; stopReading(); updateMainState('connected'); }
+});
+
+async function disconnectSerial() {
+    if (isStreaming) await stopReading();
+    if (port) { await port.close(); port = null; }
+    isConnected = false; updateMainState('disconnected');
+}
+
+async function stopReading() {
+    if (reader) { await reader.cancel(); await inputDone.catch(()=>{}); reader = null; }
+}
+
+// 수신 문자열을 '\n' 기준 줄 단위로 잘라주는 변환기
+class LineBreakTransformer {
+    constructor() { this.container = ''; }
+    transform(chunk, controller) {
+        this.container += chunk;
+        const lines = this.container.split('\n');
+        this.container = lines.pop();
+        lines.forEach(line => controller.enqueue(line));
+    }
+    flush(controller) { controller.enqueue(this.container); }
+}
+
+async function startReading() {
+    const textDecoder = new TextDecoderStream();
+    inputDone = port.readable.pipeTo(textDecoder.writable);
+    inputStream = textDecoder.readable.pipeThrough(new TransformStream(new LineBreakTransformer()));
+    reader = inputStream.getReader();
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) processData(value.trim());
+        }
+    } catch (e) { console.error(e); } finally { reader.releaseLock(); }
+}
+
+// [여기만 구현] 한 줄(예: "10.5, 20, 30")을 받아 화면을 업데이트
+function processData(dataStr) {
+    if (!isStreaming) return;
+    rawInfo.n++; rawInfo.last = dataStr;
+    let values = dataStr.split(',').map(v => parseFloat(v.trim()));
+    if (values.some(v => Number.isNaN(v))) {
+        // "gas: 123" 처럼 글자가 섞인 줄은 각 칸의 마지막 숫자만 골라 다시 시도
+        values = dataStr.split(',').map(v => { const m = v.match(/-?\d+(?:\.\d+)?/g); return m ? parseFloat(m[m.length - 1]) : NaN; });
+        if (values.some(v => Number.isNaN(v))) { rawInfo.bad++; return; }  // 불완전한 줄은 무시
+    }
+    // values[0], values[1], ... 를 '사용 센서' 순서대로 그래프/표/카드에 반영
+    ingest('main', values);   // 최신 값 저장 → 측정 주기마다 기록, 화면 갱신 루프가 카드·그래프·표·통계에 반영
+}
+// ===== 검증본 끝 =====
+
+// ===================== 추가 장치 (같은 방식·같은 속도) =====================
+async function addExtraDevice() {
+  try {
+    const p = await navigator.serial.requestPort();
+    await p.open({ baudRate: 115200 });
+    const d = {id: 'x' + (++devSeq), port: p, reader: null, done: null};
+    extras.push(d); readExtra(d); refreshStatus();
+  } catch (e) { console.error("연결 에러:", e); toast('장치를 추가하지 못했습니다. 이미 연결된 장치인지 확인하세요.'); }
+}
+async function readExtra(d) {
+  const dec = new TextDecoderStream();
+  d.done = d.port.readable.pipeTo(dec.writable);
+  d.reader = dec.readable.pipeThrough(new TransformStream(new LineBreakTransformer())).getReader();
+  try {
+    while (true) {
+      const { value, done } = await d.reader.read();
+      if (done) break;
+      if (value && isStreaming) {
+        const values = value.trim().split(',').map(v => parseFloat(v.trim()));
+        if (!values.some(v => Number.isNaN(v))) ingest(d.id, values);
+      }
+    }
+  } catch (e) { console.error(e); } finally { try { d.reader.releaseLock(); } catch (e) {} }
+}
+async function closeExtra(d) {
+  const i = extras.indexOf(d); if (i >= 0) extras.splice(i, 1);
+  delete latestBy[d.id];
+  try { if (d.reader) { await d.reader.cancel(); await d.done.catch(() => {}); } await d.port.close(); } catch (e) {}
+  refreshStatus();
+}
+$('btnAdd').addEventListener('click', () => {
+  if (!navigator.serial) return alert("Web Serial 미지원 브라우저입니다 (Chrome 권장).");
+  if (!isConnected) $('btnConnect').click(); else addExtraDevice();
+});
+$('btnDiscAll').addEventListener('click', () => disconnectSerial());
+// USB 케이블이 뽑혔을 때
+if (navigator.serial) navigator.serial.addEventListener('disconnect', e => {
+  if (port && e.target === port) { reader = null; port = null; isConnected = false; updateMainState('disconnected'); toast('장치 연결이 끊어졌습니다.'); }
+  else { const d = extras.find(x => x.port === e.target); if (d) closeExtra(d); }
+});
+
+// ===================== 데모 모드 =====================
+let demoTimer, demoT = 0;
+function startDemo() {
+  demoOn = true; measuring = true; lastTick = performance.now();
+  demoTimer = setInterval(() => {
+    if (!measuring) return;
+    demoT += 0.05; const t = demoT, n = () => (Math.random() - 0.5);
+    ingest('demo', [
+      250 + 100 * Math.sin(t / 3) + n() * 4, 0.3 * Math.sin(t) + n() * 0.02, 0.25 * Math.cos(t * 0.8) + n() * 0.02, 0.45 + 0.1 * Math.sin(t / 2) + n() * 0.02,
+      60 + 30 * Math.sin(t / 8) + n(), 35 + 15 * Math.sin(t / 5) + n() * 3, 3.3 + 0.2 * Math.sin(t / 2) + n() * 0.02, 120 + 40 * Math.sin(t / 2) + n() * 2,
+      650 + 200 * Math.sin(t / 10) + n() * 10, 300 + 50 * Math.sin(t / 6) + n() * 4, 1013 + 2 * Math.sin(t / 15) + n() * 0.2,
+      150 + 100 * Math.sin(t / 4), 30 * Math.sin(t * 1.5) + n()
+    ]);
+  }, 50);
+}
+function stopDemo() { demoOn = false; clearInterval(demoTimer); delete latestBy.demo; }
+$('btnDemo').addEventListener('click', () => {
+  if (demoOn) { stopDemo(); measuring = false; }
+  else { if (isConnected) return toast('장치가 연결되어 있을 때는 데모를 켤 수 없습니다.'); startDemo(); }
+  refreshStatus();
+});
+// 헤더 시작/일시정지 — 장치가 없을 때(데모) 동작
+$('btnStart').addEventListener('click', () => {
+  if (isConnected) return;
+  if (demoOn) { measuring = !measuring; lastTick = performance.now(); refreshStatus(); }
+  else toast('먼저 장치를 연결하거나 데모 데이터를 켜 주세요.');
+});
+
+// ===================== 측정 제어 패널 =====================
+$('pStart').addEventListener('click', () => {
+  if (isConnected) { if (!isStreaming) $('btnStart').click(); }
+  else if (demoOn) { measuring = true; lastTick = performance.now(); refreshStatus(); }
+  else toast('먼저 장치를 연결하거나 데모 데이터를 켜 주세요.');
+});
+$('pPause').addEventListener('click', () => {
+  if (isConnected) { if (isStreaming) $('btnStart').click(); }
+  else if (demoOn) { measuring = false; refreshStatus(); }
+});
+$('pReset').addEventListener('click', () => {
+  if (rows.length && !confirm('측정 데이터를 모두 지울까요?')) return;
+  rows = []; stats = []; pending = []; elapsed = 0; buildTable(); updateChart(); updateScatter(); updateStats();
+});
+
+// ===================== 저장·내보내기 =====================
+$('btnCsv').addEventListener('click', () => {
+  if (!rows.length) return toast('저장할 측정 데이터가 없습니다.');
+  const en = enabled(), q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  let csv = ['시간(초)'].concat(en.map(label)).map(q).join(',') + '\r\n';
+  rows.forEach(r => csv += [r.t.toFixed(2)].concat(en.map(i => r.v[i] === undefined ? '' : r.v[i])).join(',') + '\r\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'}));
+  download(`센서데이터_${stamp()}.csv`, url); setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+$('btnPng').addEventListener('click', () => download(`그래프_${stamp()}.png`, lineChart.toBase64Image('image/png', 1)));
+$('btnPrint').addEventListener('click', () => window.print());
+$('btnPdf').addEventListener('click', () => { toast('인쇄 창에서 대상(프린터)을 "PDF로 저장"으로 선택하세요.'); setTimeout(() => window.print(), 900); });
+$('btnImg').addEventListener('click', async () => {
+  if (!window.html2canvas) return toast('이미지 저장 도구를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+  $('toast').style.display = 'none';
+  try { const cv = await html2canvas($('app'), {backgroundColor: '#ffffff', scale: 2}); download(`대시보드_${stamp()}.png`, cv.toDataURL('image/png')); }
+  catch (e) { console.error(e); toast('이미지 저장에 실패했습니다.'); }
+});
+window.addEventListener('beforeprint', () => { lineChart.resize(); scChart.resize(); });
+window.addEventListener('afterprint', () => { lineChart.resize(); scChart.resize(); });
+
+// ===================== 학습지 (자동 저장) =====================
+let ws = lsGet('jnmc_worksheet', {});
+const WS_ROWS = 4;
+(function buildWsTable() {
+  let h = '';
+  for (let r = 0; r < WS_ROWS; r++) {
+    h += `<tr><td><input data-k="c${r}" type="text" placeholder="조건 ${r + 1}" style="width:110px"></td>`;
+    for (let k = 0; k < 3; k++) h += `<td><span class="pm"><input data-k="m${r}_${k}" data-m="${r}" type="text" inputmode="decimal" style="width:70px" aria-label="조건 ${r + 1} ${k + 1}회 측정값"><button class="btn" data-pm="" aria-label="부호 바꾸기">±</button></span></td>`;
+    h += `<td id="avg${r}">–</td></tr>`;
+  }
+  $('wsTable').tBodies[0].innerHTML = h;
+})();
+function wsAvg(r) {
+  const vs = [...document.querySelectorAll(`[data-m="${r}"]`)].map(i => parseFloat(i.value)).filter(v => !Number.isNaN(v));
+  $('avg' + r).textContent = vs.length ? fmt(vs.reduce((a, b) => a + b, 0) / vs.length) : '–';
+}
+document.querySelectorAll('[data-k]').forEach(el => { if (ws[el.dataset.k] !== undefined && el.id !== 'wsCh') el.value = ws[el.dataset.k]; });
+function wsSave(e) {
+  const el = e.target; if (!el.dataset || el.dataset.k === undefined) return;
+  ws[el.dataset.k] = el.value; lsSet('jnmc_worksheet', ws);
+  if (el.dataset.m !== undefined) wsAvg(+el.dataset.m);
+}
+document.addEventListener('input', wsSave); document.addEventListener('change', wsSave);
+$('wsGrab').addEventListener('click', () => {
+  const c = combined(), i = +$('wsCh').value;
+  if (!c.length || c[i] === undefined) return toast('아직 측정값이 없습니다. 측정을 시작해 주세요.');
+  const cell = [...document.querySelectorAll('[data-m]')].find(x => x.value.trim() === '');
+  if (!cell) return toast('기록표가 가득 찼습니다.');
+  cell.value = fmt(c[i]); cell.dispatchEvent(new Event('input', {bubbles: true}));
+});
+
+// ===================== 패널 접기 · 탭 · 전체 화면 =====================
+function resizeCharts() { setTimeout(() => { lineChart.resize(); scChart.resize(); }, 60); }
+document.querySelectorAll('.fold').forEach(b => b.addEventListener('click', () => { b.closest('.step').classList.toggle('closed'); resizeCharts(); }));
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === t.dataset.tab));
+  resizeCharts();
+}));
+$('btnFull').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+});
+
+// ===================== 내보내기 메뉴 =====================
+function setOutMenu(open) { $('outList').hidden = !open; $('btnOut').setAttribute('aria-expanded', open); }
+$('btnOut').addEventListener('click', () => setOutMenu($('outList').hidden));
+// 항목을 누르거나 바깥을 누르면 닫힘 (항목 동작보다 먼저 닫아 이미지·인쇄에 메뉴가 찍히지 않게)
+document.addEventListener('click', e => { if (!e.target.closest('#btnOut')) setOutMenu(false); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('outList').hidden) { setOutMenu(false); $('btnOut').focus(); } });
+
+// ===================== 시작 =====================
+const savedInt = lsGet('jnmc_interval', null); if (savedInt) $('interval').value = savedInt;
+rebuildAll();
+for (let r = 0; r < WS_ROWS; r++) wsAvg(r);
+setTick(); refreshStatus();
+if (!navigator.serial) toast('이 브라우저는 장치 연결(Web Serial)을 지원하지 않습니다. Chrome 또는 Edge에서 열어 주세요. 데모 데이터는 사용할 수 있습니다.');
+</script>
+</body>
+</html>
